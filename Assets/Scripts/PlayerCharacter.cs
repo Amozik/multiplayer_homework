@@ -57,11 +57,13 @@ public class PlayerCharacter : Character
             _characterController.Move(movement);
             _mouseLook.Rotation();
 
-            CmdUpdatePosition(transform.position);
+            var playerTransform = transform;
+            CmdUpdatePositionAndRotation(playerTransform.position, playerTransform.rotation);
         }
         else
         {
             transform.position = Vector3.SmoothDamp(transform.position, _serverPosition, ref _currentVelocity, _movingSpeed * Time.deltaTime);
+            transform.rotation = Quaternion.Lerp(transform.rotation, _serverRotation, .5f);
         }
     }
 
