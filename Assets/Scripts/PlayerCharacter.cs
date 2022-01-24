@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Networking;
 
 public class PlayerCharacter : Character
 {
@@ -18,6 +19,9 @@ public class PlayerCharacter : Character
     private MouseLook _mouseLook;
 
     private Vector3 _currentVelocity;
+    
+    [SyncVar]
+    private int _currentHealth;
 
     protected override FireAction FireAction { get; set; }
 
@@ -26,10 +30,12 @@ public class PlayerCharacter : Character
         base.Initiate();
         FireAction = gameObject.AddComponent<RayShooter>();
         FireAction.Reloading();
+        FireAction.OnFire += CmdTryDealDamage;
         _characterController = GetComponentInChildren<CharacterController>();
         _characterController ??= gameObject.AddComponent<CharacterController>();
         _mouseLook = GetComponentInChildren<MouseLook>();
         _mouseLook ??= gameObject.AddComponent<MouseLook>();
+        _currentHealth = _health;
     }
 
     public override void Movement()
@@ -57,11 +63,45 @@ public class PlayerCharacter : Character
             _characterController.Move(movement);
             _mouseLook.Rotation();
 
-            CmdUpdatePosition(transform.position);
+            var playerTransform = transform;
+            CmdUpdatePositionAndRotation(playerTransform.position, playerTransform.rotation);
         }
         else
         {
             transform.position = Vector3.SmoothDamp(transform.position, _serverPosition, ref _currentVelocity, _movingSpeed * Time.deltaTime);
+            transform.rotation = Quaternion.Lerp(transform.rotation, _serverRotation, .5f);
+        }
+    }
+    
+    [Command]
+    private void CmdTryDealDamage(Vector3 direction)
+    {
+        if (Physics.Raycast(transform.position, direction, out var raycastHit, 10))
+        {
+            var character = raycastHit.transform.GetComponentInParent<PlayerCharacter>();
+            if (character != null)
+            {
+                character.DealDamage(FireAction.Damage);
+            }
+        }
+    }
+    
+    public void DealDamage(int value)
+    {
+        _currentHealth -= value;
+
+        if (_currentHealth < 0)
+        {
+            //Move in invisible place
+            CmdUpdatePositionAndRotation(new Vector3(0,0, -300), Quaternion.identity);
+            
+            gameObject.SetActive(false);
+            
+            if (isClient)
+            {
+                //NetworkClient.ShutdownAll(); //При вызове выдает кучу ошибок, не смг найти другого способа, как отключить клиент
+                Destroy(gameObject);
+            }
         }
     }
 
@@ -76,7 +116,7 @@ public class PlayerCharacter : Character
             return;
         }
 
-        var info = $"Health: {_health}\nClip: {FireAction.BulletCount}";
+        var info = $"Health: {_currentHealth}\nClip: {FireAction.BulletCount}";
         var size = 12;
         var bulletCountSize = 50;
         var posX = Camera.main.pixelWidth / 2 - size / 4;

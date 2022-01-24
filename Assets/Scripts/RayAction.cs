@@ -1,14 +1,17 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Networking;
 
 public class RayShooter : FireAction
 {
     private Camera _camera;
+    private int _damage = 50;
 
     protected override void Start()
     {
         base.Start();
         _camera = GetComponentInChildren<Camera>();
+        Damage = _damage;
     }
 
     private void Update()
@@ -56,15 +59,23 @@ public class RayShooter : FireAction
             yield break;
         }
 
+        var forward = transform.TransformDirection(Vector3.forward) * 10;
+        Debug.DrawRay(hit.point, forward, Color.red);
+        
         var shoot = _bullets.Dequeue();
         BulletCount = _bullets.Count.ToString();
         _ammunition.Enqueue(shoot);
+        shoot.GetComponent<Rigidbody>().velocity = forward;
         shoot.SetActive(true);
         shoot.transform.position = hit.point;
         shoot.transform.parent = hit.transform;
+        
+        OnFire?.Invoke(forward);
 
         yield return new WaitForSeconds(2.0f);
         shoot.SetActive(false);
     }
+
+    
 }
 
