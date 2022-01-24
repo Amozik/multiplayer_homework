@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
@@ -12,6 +13,9 @@ public abstract class FireAction : MonoBehaviour
     private int _startAmmunition = 20;
 
     public string BulletCount { get; protected set; } = string.Empty;
+    public int Damage { get; protected set; }
+    public Action<Vector3> OnFire { get; set; }
+    
     protected Queue<GameObject> _bullets = new Queue<GameObject>();
     protected Queue<GameObject> _ammunition = new Queue<GameObject>();
     protected bool _reloading = false;
@@ -25,6 +29,7 @@ public abstract class FireAction : MonoBehaviour
             {
                 bullet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 bullet.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+                bullet.AddComponent<Rigidbody>();
             }
             else
             {
